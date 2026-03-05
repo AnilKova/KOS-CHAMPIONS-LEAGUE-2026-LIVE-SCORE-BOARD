@@ -6,7 +6,7 @@
 <title>KOS CHAMPIONS LEAGUE 2026 — Live Scoreboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root{--neon:#00f5ff;--acid:#aaff00;--dark:#050a0f;--panel:#0d1e2e;--text:#ffffff;--gold:#ffcc00;--silver:#b8c8d8;--bronze:#cd7f32;--win:#aaff00;--lose:#ff4455;--glow:0 0 20px rgba(0,245,255,0.5)}
+  :root{--neon:#00f5ff;--acid:#aaff00;--dark:#050a0f;--panel:#0d1e2e;--text:#c8e8ff;--gold:#ffcc00;--silver:#b8c8d8;--bronze:#cd7f32;--win:#aaff00;--lose:#ff4455;--glow:0 0 20px rgba(0,245,255,0.5)}
   *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
   body{background:var(--dark);color:var(--text);font-family:'Rajdhani',sans-serif;overflow-x:hidden;min-height:100vh}
   body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9997}
@@ -339,7 +339,7 @@
 
 <!-- NAV -->
 <nav>
-  <a href="index.html" class="logo"><img src="1.png" alt="KOS">KOS <span>TECHTRONICA</span></a>
+  <a href="index.html" class="logo"><img src="1.png" alt="KOS">KOS <span>CHAMPIONS LEAGUE</span></a>
   <div class="nav-right">
     <div class="live-badge" id="liveBadge">&#9679; LIVE</div>
     <div class="admin-live-badge" id="adminLiveBadge">&#9881; ADMIN</div>
@@ -405,10 +405,10 @@
   </div>
 </div>
 
-<footer>&copy; 2026 KOS TECHTRONICA &mdash; AUTO-REFRESHES EVERY 10 SECONDS</footer>
+<footer>&copy; 2026 KOS CHAMPIONS LEAGUE &mdash; AUTO-REFRESHES EVERY 10 SECONDS</footer>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxIjoGP7qmRkL41a045tVVonEuvE-3d2RyS5MAUPCmbDAiO-RAEqczCzoE28F6GVESe/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxP7vyiySVv3bxoW3LRa5g56_UU4yVSp2u2P5F4eP_aXg9vmFtTWvInKNSq4jsP8KaI/exec';
 const CORRECT_PW='1121';
 const REFRESH_SEC=10;
 const TIME_EVENTS=['Robo Race'];
@@ -504,10 +504,14 @@ function buildDraw(evData,isTime){
   if(!teams.length) return `<div class="empty-box"><span class="empty-icon">&#128197;</span>NO TEAMS REGISTERED YET</div>`;
   let html=`<div><div class="block-hdr"><span style="font-size:1rem">&#127922;</span><div class="block-hdr-title">ALL TEAMS &amp; PROGRESS</div><span class="block-hdr-count">${teams.length} TEAMS</span></div>
   <table class="dtable"><thead><tr><th>TEAM NAME</th><th class="c">QUAL</th><th class="c">QF</th><th class="c">SF</th><th class="c">FINAL</th>${isTime?'<th class="c">TIME</th>':''}</tr></thead><tbody>`;
-  teams.forEach(t=>{
+  // deduplicate teams by name
+  const seenD=new Set();
+  const uteams=teams.filter(t=>{const k=t.name.toLowerCase();if(seenD.has(k))return false;seenD.add(k);return true;});
+  uteams.forEach(t=>{
     html+=`<tr><td><div class="t-name">${esc(t.name)}</div></td>`;
     ['Qual','QF','SF','Final'].forEach(r=>{
-      const mid=t[r+'_match']||'';const res=(t[r+'_result']||'').toUpperCase();
+      const mid=t[r+'_match']||t['Qualifier_match']||'';
+      const res=(t[r+'_result']||t['Qualifier_result']||'').toUpperCase();
       const rb=res==='WIN'?'<span class="res res-win">W</span>':res==='LOSE'?'<span class="res res-lose">L</span>':mid?`<span class="res res-pending">${esc(mid)}</span>`:'<span style="color:rgba(200,232,255,0.15);font-size:0.7rem">—</span>';
       html+=`<td class="c">${rb}</td>`;
     });
@@ -612,7 +616,11 @@ function renderAdminPanel(ev,evData,isTime){
     if(!mids.length) return;hasAny=true;
     html+=`<div class="round-section"><div class="round-hdr ${ROUND_CLS[r]}"><div class="round-hdr-title">${ROUND_LABELS[r]}</div><div class="round-hdr-sub">${mids.length} MATCH${mids.length!==1?'ES':''}</div></div><div class="matches-grid">`;
     mids.sort().forEach(mid=>{
-      const teams=grp[mid];const allDone=teams.every(t=>t.result==='WIN'||t.result==='LOSE');
+      // deduplicate teams in this match by name
+      const rawTeams=grp[mid];
+      const seenT=new Set();
+      const teams=rawTeams.filter(t=>{const k=(t.name||'').toLowerCase();if(seenT.has(k))return false;seenT.add(k);return true;});
+      const allDone=teams.length>=2&&teams.every(t=>t.result==='WIN'||t.result==='LOSE');
       html+=`<div class="match-card${allDone?' done':''}" id="acard-${slug(ev)}-${r}-${mid}"><div class="match-card-hdr">${mid} ${allDone?'&#10003; DONE':''}</div>`;
       teams.forEach(t=>{
         const res=t.result;const wonCls=res==='WIN'?'won':res==='LOSE'?'lost':'';
@@ -675,7 +683,9 @@ function rebuildMatches(ev){
     (evData.teams||[]).forEach(t=>{
       const mid=t[r+'_match'];if(!mid) return;
       if(!grp[mid]) grp[mid]=[];
-      grp[mid].push({name:t.name,result:t[r+'_result']||'',time:t.time||''});
+      // deduplicate
+      const already=grp[mid].some(x=>x.name.toLowerCase()===t.name.toLowerCase());
+      if(!already) grp[mid].push({name:t.name,result:t[r+'_result']||'',time:t.time||''});
     });
     matches[r]=grp;
   });
